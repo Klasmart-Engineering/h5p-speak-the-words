@@ -74,6 +74,9 @@ export default class {
 
     this.params.acceptedAnswers = this.params.acceptedAnswers.map(decode);
 
+    this.mediaRecorder = null;
+    this.mediaChunks = [];
+
     this.question = question;
     this.hasAnswered = false;
     this.score = 0;
@@ -152,6 +155,10 @@ export default class {
    * @param {string} feedbackText Text telling the user that he has succeeded
    */
   answeredCorrectly(feedbackText) {
+    if (this.mediaRecorder.state !== 'inactive') {
+      this.mediaRecorder.stop();
+    }
+
     this.questionWrapper.parentNode.classList.add('empty');
     if (this.questionWrapper.parentNode.parentNode) {
       this.questionWrapper.parentNode.parentNode.classList.add('answered');
@@ -171,6 +178,10 @@ export default class {
    * @param {String} feedbackText Text telling user that he gave the wrong answer
    */
   answeredWrong(feedbackText) {
+    if (this.mediaRecorder.state !== 'inactive') {
+      this.mediaRecorder.stop();
+    }
+
     this.questionWrapper.parentNode.classList.add('empty');
     if (this.questionWrapper.parentNode.parentNode) {
       this.questionWrapper.parentNode.parentNode.classList.add('answered');
@@ -206,6 +217,31 @@ export default class {
 
       this.question.setIntroduction(errorElement);
       return;
+    }
+
+    this.mediaMIMEType = this.getRecordingMIMEType();
+
+    if (this.mediaMIMEType) {
+      navigator.mediaDevices.getUserMedia({audio: true}).then(stream => {
+        // Provide audio for export
+        this.mediaRecorder = new MediaRecorder(stream);
+
+        this.mediaRecorder.onstop = () => {
+          const blob = new Blob(this.mediaChunks, { type: this.mediaMIMEType });
+          this.mediaChunks = [];
+          this.triggerFileExport({ type: this.mediaMIMEType, blob: blob });
+        }
+
+        this.mediaRecorder.ondataavailable = (event) => {
+          this.mediaChunks.push(event.data);
+        }
+
+        this.speechEventStore.on('start-listening', () => {
+          if (this.mediaRecorder.state !== 'recording') {
+            this.mediaRecorder.start();
+          }
+        });
+      })
     }
 
     this.question.setIntroduction(this.introduction);
@@ -329,5 +365,43 @@ export default class {
       type: 'http://adlnet.gov/expapi/activities/cmi.interaction',
       interactionType: 'other'
     });
+  }
+
+  /**
+   * Get MIME type for recording.
+   * @return {string|null} MIME type or null.
+   */
+  getRecordingMIMEType() {
+    if (!window.MediaRecorder) {
+      return null;
+    }
+
+    if (!window.MediaRecorder.isTypeSupported) {
+      // Best guess: older Apple device not yet supporting that function but recording in general
+      return 'audio/mp4';
+    }
+
+    if (window.MediaRecorder.isTypeSupported('audio/webm')) {
+      return 'audio/webm';
+    }
+
+    if (window.MediaRecorder.isTypeSupported('audio/mp4')) {
+      // Exception for Apple devices that only record mp4
+      return 'audio/mp4';
+    }
+
+    return null;
+  }
+
+  /**
+   * Trigger file export.
+   * @param {object} data Any data to be exported.
+   */
+  triggerFileExport(data) {
+    this.speechEventStore.trigger(
+      'exportFile',
+      data,
+      { external: true }
+    );
   }
 }
