@@ -398,6 +398,23 @@ export default class {
    * @param {object} data Any data to be exported.
    */
   triggerFileExport(data) {
+    // Set content id
+    if (!data.contentId) {
+      data.contentId = this.question.contentId;
+    }
+
+    // Set subcontent id (if is subcontent)
+    if (!data.subContentId && this.question.subContentId) {
+      data.subContentId = this.question.subContentId;
+    }
+
+    // Set user just like xAPI actor
+    if (!data.user) {
+      const event = new H5P.XAPIEvent();
+      event.setActor();
+      data.user = event.data.statement.actor;
+    }
+
     this.speechEventStore.trigger(
       'exportFile',
       data,
