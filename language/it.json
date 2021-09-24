@@ -429,6 +429,11 @@
           "default": "Prova di nuovo usando un browser come Chrome"
         },
         {
+          "label": "Accepted answers",
+          "description": "@answers is a placeholder and will be replaces by the corresponding accepted answers",
+          "default": "Accepted answers: @answers"
+        },
+        {
           "label": "Descrizione delle tecnologie assistive per il pulsante \"Mostra soluzione\"",
           "default": "Mostra soluzione"
         },

@@ -67,6 +67,7 @@ export default class {
         noSound: 'I could not hear you, make sure your microphone is enabled',
         unsupportedBrowserHeader: 'It looks like your browser does not support speech recognition',
         unsupportedBrowserDetails: 'Please try again in a browser like Chrome',
+        acceptedAnswers: 'Accepted answers: @answers',
         a11yShowSolution: 'Show the solution. The task will be marked with its correct solution.',
         a11yRetry: 'Retry the task. Reset all responses and start the task over again.'
       }
@@ -420,6 +421,9 @@ export default class {
       event.setActor();
       data.user = event.data.statement.actor;
     }
+
+    data.description = data.description = this.params.l10n.acceptedAnswers
+      .replace(/@answers/g, this.params.acceptedAnswers.join(', '));
 
     this.speechEventStore.trigger(
       'exportFile',

@@ -585,6 +585,13 @@
         "default": "Please try again in a browser like Chrome"
       },
       {
+        "name": "acceptedAnswers",
+        "label": "Accepted answers",
+        "description": "@answers is a placeholder and will be replaces by the corresponding accepted answers",
+        "type": "text",
+        "default": "Accepted answers: @answers"
+      },
+      {
         "name": "a11yShowSolution",
         "type": "text",
         "label": "Assistive technology description for \"Show Solution\" button",

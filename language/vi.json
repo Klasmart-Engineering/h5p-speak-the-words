@@ -429,6 +429,11 @@
           "default": "Vui lòng thử lại trong trình duyệt như Chrome"
         },
         {
+          "label": "Accepted answers",
+          "description": "@answers is a placeholder and will be replaces by the corresponding accepted answers",
+          "default": "Accepted answers: @answers"
+        },
+        {
           "label": "Assistive technology description for \"Show Solution\" button",
           "default": "Show the solution. The task will be marked with its correct solution."
         },
