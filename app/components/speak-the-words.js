@@ -91,6 +91,8 @@ export default class {
     this.createContent(this.params);
     this.createButtonBar(this.params.l10n);
 
+    this.handleAnswered = this.handleAnswered.bind(this);
+
     // Renders record button and show solution area into the question main content
     ReactDOM.render((
       <div>
@@ -104,8 +106,8 @@ export default class {
     ), this.questionWrapper);
 
     this.speechEngine = new SpeechEngine(this.params, this.speechEventStore);
-    this.speechEventStore.on('answered-correctly', this.answeredCorrectly.bind(this, this.params.correctAnswerText));
-    this.speechEventStore.on('answered-wrong', this.answeredWrong.bind(this, this.params.incorrectAnswerText));
+    this.speechEventStore.on('answered-correctly', this.handleAnswered);
+    this.speechEventStore.on('answered-wrong', this.handleAnswered);
   }
 
   /**
@@ -149,12 +151,10 @@ export default class {
   }
 
   /**
-   * The user answered correctly
-   * Hide button and display feedback
-   *
-   * @param {string} feedbackText Text telling the user that he has succeeded
+   * Handle answered.
+   * @param {event} event Annyang result event.
    */
-  answeredCorrectly(feedbackText) {
+  handleAnswered(event) {
     if (this.mediaRecorder.state !== 'inactive') {
       this.mediaRecorder.stop();
     }
@@ -163,35 +163,27 @@ export default class {
     if (this.questionWrapper.parentNode.parentNode) {
       this.questionWrapper.parentNode.parentNode.classList.add('answered');
     }
-    this.question.setFeedback(decode(feedbackText), 1, 1);
-    this.question.hideButton('try-again');
-    this.question.hideButton('show-solution');
-    this.question.triggerXAPIScored(1, 1, 'answered', true, true);
-    this.hasAnswered = true;
-    this.score = 1;
-  }
 
-  /**
-   * The user answered incorrectly
-   * Show retry and show solution button and display feedback
-   *
-   * @param {String} feedbackText Text telling user that he gave the wrong answer
-   */
-  answeredWrong(feedbackText) {
-    if (this.mediaRecorder.state !== 'inactive') {
-      this.mediaRecorder.stop();
+    const response = event.data[0];
+    const correct = this.params.acceptedAnswers.indexOf(response) !== -1;
+
+    let answerText = '';
+    if (correct) {
+      this.score = 1;
+      answerText = this.params.correctAnswerText;
+      this.question.hideButton('try-again');
+      this.question.hideButton('show-solution');
+    }
+    else {
+      this.score = 0;
+      answerText = this.params.incorrectAnswerText;
+      this.question.showButton('try-again');
+      this.question.showButton('show-solution');
     }
 
-    this.questionWrapper.parentNode.classList.add('empty');
-    if (this.questionWrapper.parentNode.parentNode) {
-      this.questionWrapper.parentNode.parentNode.classList.add('answered');
-    }
-    this.question.setFeedback(decode(feedbackText), 0, 1);
-    this.question.showButton('try-again');
-    this.question.showButton('show-solution');
-    this.question.triggerXAPIScored(0, 1, 'answered', true, false);
+    this.question.setFeedback(decode(answerText), this.getScore(), this.getMaxScore());
+    this.triggerXAPIAnswered(response);
     this.hasAnswered = true;
-    this.score = 0;
   }
 
   /**
@@ -308,6 +300,19 @@ export default class {
   }
 
   /**
+   * Trigger xAPI answered statement.
+   * @param {string} response Response that was detected.
+   */
+  triggerXAPIAnswered(response) {
+    const xAPIEvent = this.getXAPIAnswerEvent(this.question);
+
+    // Add response to result
+    xAPIEvent.data.statement.result.response = response;
+
+    this.question.trigger(xAPIEvent)
+  }
+
+  /**
    * Get xAPI data.
    * @param {object} wrapper H5P instance.
    * @return {object} XAPI statement.
@@ -363,7 +368,8 @@ export default class {
       name: {'en-US': H5P.createTitle('Speak the Words')},
       description: {'en-US': this.params.question},
       type: 'http://adlnet.gov/expapi/activities/cmi.interaction',
-      interactionType: 'other'
+      interactionType: 'fill-in',
+      correctResponsesPattern: this.params.acceptedAnswers
     });
   }
 

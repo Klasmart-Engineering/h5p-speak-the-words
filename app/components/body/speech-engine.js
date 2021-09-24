@@ -66,10 +66,11 @@ export default class SpeechEngine {
   /**
    * Notify listeners that user has answered correctly.
    * Destroy speech engine
+   * @param {string} response Response that was detected.
    */
-  answeredCorrectly() {
+  answeredCorrectly(response) {
     if (this.listening) {
-      this.eventStore.trigger('answered-correctly');
+      this.eventStore.trigger('answered-correctly', [response]);
       this.destroy();
     }
   }
@@ -98,7 +99,7 @@ export default class SpeechEngine {
   getCommands(acceptedAnswers) {
     return acceptedAnswers.reduce((prev, curr) => {
       prev[curr] = () => {
-        this.answeredCorrectly();
+        this.answeredCorrectly(curr);
       };
       return prev;
     }, {});
