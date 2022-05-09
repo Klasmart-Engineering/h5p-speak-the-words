@@ -48,8 +48,9 @@ export default class {
    *
    * @param {SpeakTheWordsParameters} params Author specified parameters
    * @param {Object} question H5P Question instance with button and event functionality
+   * @param {object} extras Extra parameters like previous state.
    */
-  constructor(params, question) {
+  constructor(params, question, extras) {
     // Set defaults
     this.params = Util.extend({
       question: '',
@@ -73,6 +74,14 @@ export default class {
       }
     }, params);
 
+    /** @constant {string[]} view state names*/
+    this.VIEW_STATES = ['task', 'results', 'solutions'];
+
+    this.previousState = (extras && extras.previousState) ?
+      extras.previousState :
+      {};
+
+
     this.params.acceptedAnswers = this.params.acceptedAnswers.map(decode);
 
     this.mediaRecorder = null;
@@ -81,6 +90,8 @@ export default class {
     this.question = question;
     this.hasAnswered = false;
     this.score = 0;
+
+    this.setViewState(this.previousState.vieState || 'task');
 
     // Skip rendering components if speech engine does not exist
     if (!window.annyang) {
@@ -156,7 +167,7 @@ export default class {
    * @param {event} event Annyang result event.
    */
   handleAnswered(event) {
-    if (this.mediaRecorder.state !== 'inactive') {
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
       this.mediaRecorder.stop();
     }
 
@@ -166,6 +177,7 @@ export default class {
     }
 
     const response = event.data[0];
+    this.lastInterpretations = event.data;
     const correct = this.params.acceptedAnswers.indexOf(response) !== -1;
 
     let answerText = '';
@@ -183,8 +195,13 @@ export default class {
     }
 
     this.question.setFeedback(decode(answerText), this.getScore(), this.getMaxScore());
-    this.triggerXAPIAnswered(response);
+
+    if (!this.previousState.viewState || this.previousState.viewState === 'task') {
+      this.triggerXAPIAnswered(response);
+    }
     this.hasAnswered = true;
+
+    this.setViewState('results');
   }
 
   /**
@@ -239,6 +256,32 @@ export default class {
 
     this.question.setIntroduction(this.introduction);
     this.question.setContent(this.questionWrapper);
+
+    if (this.previousState.lastInterpretations && this.previousState.lastInterpretations.length) {
+      this.recreateState();
+    }
+  }
+
+  /**
+   * Recreate state.
+   */
+  recreateState() {
+    const wasCorrect = this.params.acceptedAnswers.indexOf(this.previousState.lastInterpretations[0]) !== -1;
+
+    if (this.previousState.viewState === 'results' || this.previousState.viewState === 'solutions') {
+      if (wasCorrect) {
+        this.speechEventStore.trigger('answered-correctly', this.previousState.lastInterpretations);
+      }
+      else {
+        this.speechEventStore.trigger('answered-wrong', this.previousState.lastInterpretations);
+      }
+    }
+
+    if (this.previousState.viewState === 'solutions') {
+      this.showSolutions();
+    }
+
+    this.speechEventStore.trigger('resize');
   }
 
   /**
@@ -256,6 +299,10 @@ export default class {
     this.hasAnswered = false;
     this.score = 0;
     this.question.trigger('reset-task');
+
+    this.previousState = {};
+    this.lastInterpretations = [];
+    this.setViewState('task');
   }
 
   /**
@@ -268,6 +315,8 @@ export default class {
     }
     this.question.hideButton('show-solution');
     this.speechEventStore.trigger('show-solution');
+
+    this.setViewState('solutions');
   }
 
   /**
@@ -398,6 +447,34 @@ export default class {
     }
 
     return null;
+  }
+
+  /**
+   * Get current state.
+   * @return {object} Current state.
+   */
+  getCurrentState() {
+    const state = {
+      viewState: this.viewState,
+      lastInterpretations: this.lastInterpretations || []
+    };
+
+    return state;
+  }
+
+  /**
+   * Set view state.
+   * @param {string} state View state.
+   */
+  setViewState(state) {
+    if (this.VIEW_STATES.indexOf(state) === -1) {
+      return;
+    }
+
+    // Kidsloop Live session storage will listen
+    this.question.trigger('kllStoreSessionState', undefined, { bubbles: true, external: true });
+
+    this.viewState = state;
   }
 
   /**

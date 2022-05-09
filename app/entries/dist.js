@@ -13,9 +13,10 @@ H5P.SpeakTheWords = (function (Question) {
    *
    * @param params
    * @param contentId
+   * @param {object} extras Extras like previous State.
    * @constructor
    */
-  function WrapperClass(params) {
+  function WrapperClass(params, contentId, extras) {
     this.params = Util.extend({
       behaviour: {
         enableSolutionsButton: true, // Expected by question type contract
@@ -24,7 +25,7 @@ H5P.SpeakTheWords = (function (Question) {
     }, params);
 
     Question.call(this, 'speak-the-words');
-    const speakTheWords = new SpeakTheWords(params, this);
+    const speakTheWords = new SpeakTheWords(params, this, extras);
 
     /**
      * Implements the registerDomElements interface required by H5P Question
@@ -96,6 +97,14 @@ H5P.SpeakTheWords = (function (Question) {
      */
     this.stop = () => {
       speakTheWords.stopListening();
+    };
+
+    /**
+     * Get current state.
+     * @return {object} Current state.
+     */
+    this.getCurrentState = () => {
+      return speakTheWords.getCurrentState();
     };
   }
 
