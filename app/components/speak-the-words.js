@@ -239,7 +239,13 @@ export default class {
         this.mediaRecorder.onstop = () => {
           const blob = new Blob(this.mediaChunks, { type: this.mediaMIMEType });
           this.mediaChunks = [];
-          this.triggerFileExport({ type: this.mediaMIMEType, blob: blob });
+
+          if (H5P.KLFileExporter) {
+            H5P.KLFileExporter.triggerFileExport(
+              this,
+              { type: this.mediaMIMEType, blob: blob }
+            );
+          }
         }
 
         this.mediaRecorder.ondataavailable = (event) => {
@@ -475,37 +481,5 @@ export default class {
     this.question.trigger('kllStoreSessionState', undefined, { bubbles: true, external: true });
 
     this.viewState = state;
-  }
-
-  /**
-   * Trigger file export.
-   * @param {object} data Any data to be exported.
-   */
-  triggerFileExport(data) {
-    // Set content id
-    if (!data.contentId) {
-      data.contentId = this.question.contentId;
-    }
-
-    // Set subcontent id (if is subcontent)
-    if (!data.subContentId && this.question.subContentId) {
-      data.subContentId = this.question.subContentId;
-    }
-
-    // Set user just like xAPI actor
-    if (!data.user) {
-      const event = new H5P.XAPIEvent();
-      event.setActor();
-      data.user = event.data.statement.actor;
-    }
-
-    data.description = data.description = this.params.l10n.acceptedAnswers
-      .replace(/@answers/g, this.params.acceptedAnswers.join(', '));
-
-    this.speechEventStore.trigger(
-      'exportFile',
-      data,
-      { external: true }
-    );
   }
 }
