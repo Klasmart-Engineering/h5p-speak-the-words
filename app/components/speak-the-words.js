@@ -242,7 +242,7 @@ export default class {
 
           if (H5P.KLFileExporter) {
             H5P.KLFileExporter.triggerFileExport(
-              this,
+              this.question,
               { type: this.mediaMIMEType, blob: blob }
             );
           }
