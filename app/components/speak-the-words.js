@@ -184,7 +184,7 @@ export default class {
     if (correct) {
       this.score = 1;
       answerText = this.params.correctAnswerText;
-      this.question.hideButton('try-again');
+      this.question.showButton('try-again');
       this.question.hideButton('show-solution');
     }
     else {
